@@ -76,6 +76,7 @@ def search_results_returned(exerpt_list):
         print('no_match_found')
 
     for item in exerpt_list:
+        print("")
         print(item)
     
 ###########################################################################
