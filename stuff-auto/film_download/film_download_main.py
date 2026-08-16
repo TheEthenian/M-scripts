@@ -18,6 +18,12 @@ import random
 
 # Naming convention Series => Show_season_episode { user's initial input }
 # Naming convention Movies => movie_name { user's initial input }
+
+# ask for the amount of iterations/season-count [input]
+# actual season number then the episodes {'season':int,episodes:[list -> split of input]}
+# all the season inputs are then put in a list which is iterated
+#
+
 # ------------------------------------------------------------
 
 link_headers = {
@@ -162,64 +168,86 @@ def main_function():
 #series
     if show_category == "2":
 
-        season_number_input = int(input("Season Number:"))
-        episode_number_list_input = input("Episode to download separated by comma symbol:")
+        iteration_count_input = int(input("Total Number of seasons:"))
 
-        episode_number_list = episode_number_list_input.split(",") 
-        amount_of_episodes = len(episode_number_list)
-        current_iteration = 0
+        input_iteration_counter = 0 
+        download_iteration_counter = 0 
 
-        while current_iteration < amount_of_episodes:
+        download_full_list = []
+
+        while input_iteration_counter < iteration_count_input:
+
+            season_number_input = int(input("Season Number:"))
+            episode_number_list_input = input("Episode to download separated by comma symbol:")
             
-            current_episode = int(episode_number_list[current_iteration])
-            episode_name = f"{search_name}_sn{season_number_input}_ep{current_episode}"
+            singular_season = {
+                    'season': season_number_input,
+                    'episodes': episode_number_list_input.split(",")
+                    }
 
-        # --------------------[links]-----------------
-            url = 'https://h5-api.aoneroom.com/wefeed-h5api-bff/subject/download'
+            download_full_list.append(singular_season)
+            input_iteration_counter += 1
 
-            query_params = {
-                'subjectId':curated_search_results[chosen_result_input]['item_id'],
-                'se':season_number_input,
-                'ep':current_episode,
-                'detailPath':curated_search_results[chosen_result_input]['item_string']
-                }
 
-            
-            response = httpx.get(url, params=query_params, headers=link_headers)
-            res_download_link_dicts = response.json()['data']['downloads']
-            print(res_download_link_dicts)
+        for entire_season in download_full_list:
+
+            season_number = entire_season['season']
+            episode_number_list = entire_season['episodes']
+
+            amount_of_episodes = len(episode_number_list)
+            current_iteration = 0
+
+            while current_iteration < amount_of_episodes:
+                
+                current_episode = int(episode_number_list[current_iteration])
+                episode_name = f"{search_name}_sn{season_number}_ep{current_episode}"
+
+            # --------------------[links]-----------------
+                url = 'https://h5-api.aoneroom.com/wefeed-h5api-bff/subject/download'
+
+                query_params = {
+                    'subjectId':curated_search_results[chosen_result_input]['item_id'],
+                    'se':season_number,
+                    'ep':current_episode,
+                    'detailPath':curated_search_results[chosen_result_input]['item_string']
+                    }
+
+                
+                response = httpx.get(url, params=query_params, headers=link_headers)
+                res_download_link_dicts = response.json()['data']['downloads']
+                print(res_download_link_dicts)
+                # -------------------------------------------------
+
+                get_download_link = []
+
+                for res_obj in res_download_link_dicts:
+                    if res_obj['resolution'] == 480:
+                        get_download_link.append(res_obj['url'])
+                        continue
+                    elif res_obj['resolution'] == 720:
+                        get_download_link.append(res_obj['url'])
+                        continue
+            # --------------------[download_file]-----------------
+                try:
+                    video_url = get_download_link[0]
+                    print(f'video url :{video_url}')
+
+                    
+                    # Stream the download to handle large files safely
+                    with httpx.stream("GET", video_url, headers=video_headers, follow_redirects=True) as response:
+                        response.raise_for_status()
+                        with open(f"{episode_name}.mp4", "wb") as f:
+                            for chunk in response.iter_bytes(chunk_size=1000192):
+                                f.write(chunk)
+                    
+                    print(f"{episode_name} download complete!")
+
+                except:
+                    print(f"{episode_name} had issues thus skipped")
             # -------------------------------------------------
 
-            get_download_link = []
-
-            for res_obj in res_download_link_dicts:
-                if res_obj['resolution'] == 480:
-                    get_download_link.append(res_obj['url'])
-                    continue
-                elif res_obj['resolution'] == 720:
-                    get_download_link.append(res_obj['url'])
-                    continue
-        # --------------------[download_file]-----------------
-            try:
-                video_url = get_download_link[0]
-                print(f'video url :{video_url}')
-
-                
-                # Stream the download to handle large files safely
-                with httpx.stream("GET", video_url, headers=video_headers, follow_redirects=True) as response:
-                    response.raise_for_status()
-                    with open(f"{episode_name}.mp4", "wb") as f:
-                        for chunk in response.iter_bytes(chunk_size=1000192):
-                            f.write(chunk)
-                
-                print(f"{episode_name} download complete!")
-
-            except:
-                print(f"{episode_name} had issues thus skipped")
-        # -------------------------------------------------
-
-            time.sleep(random.randint(7,13))
-            current_iteration += 1
+                time.sleep(random.randint(7,13))
+                current_iteration += 1
 
 
 main_function()
